@@ -18,5 +18,4 @@ public class Employee{
     private String age;
     @SerializedName("profile_image")
     private String imageUrl;
-
 }

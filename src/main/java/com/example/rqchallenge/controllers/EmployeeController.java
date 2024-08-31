@@ -27,36 +27,44 @@ public class EmployeeController implements IEmployeeController {
     @Override
     public ResponseEntity<List<Employee>> getAllEmployees() throws IOException {
         List<Employee> employees = queryEmployees();
-        if(!employees.isEmpty()){
+        if(employees != null) {
             return ResponseEntity.ok(employees);
         }
-        return ResponseEntity.badRequest().body(employees);
+        return ResponseEntity.unprocessableEntity().build();
     }
 
     @Override
     public ResponseEntity<List<Employee>> getEmployeesByNameSearch(String searchString) {
-        List<Employee> employees = new ArrayList<>();
-        for(Employee employee : queryEmployees()){
+        List<Employee> employees = queryEmployees();
+        if(employees == null){
+            return ResponseEntity.unprocessableEntity().body(null);
+        }
+        List<Employee> employeesByName = new ArrayList<>();
+        for(Employee employee : employees){
             if(employee.getName().toLowerCase().contains(searchString.toLowerCase())){
-                employees.add(employee);
+                employeesByName.add(employee);
             }
         }
-        if(!employees.isEmpty()){
-            return ResponseEntity.ok(employees);
+        if(!employeesByName.isEmpty()){
+            return ResponseEntity.ok(employeesByName);
         }
-        return ResponseEntity.badRequest().body(employees);
+        return ResponseEntity.badRequest().body(employeesByName);
     }
 
     @Override
     public ResponseEntity<Employee> getEmployeeById(String id) {
         String response = client.getById(EMPLOYEE, id);
-        if(!response.isEmpty()){
-            DummyResponse<Employee> dummyResponse = gson.fromJson(response, new TypeToken<DummyResponse<Employee>>(){}.getType());
-            if(dummyResponse.getData() != null){
-                return ResponseEntity.ok(dummyResponse.getData());
+        if(response != null){
+            try{
+                DummyResponse<Employee> dummyResponse = gson.fromJson(response, new TypeToken<DummyResponse<Employee>>(){}.getType());
+                if(dummyResponse.getData() != null){
+                    return ResponseEntity.ok(dummyResponse.getData());
+                }
+            } catch (Exception e){
+                LOG.error("Failed to get employee by id {}: {}", id, e.getLocalizedMessage());
             }
         } else {
-            LOG.error("Failed to get employee with id {}", id);
+            LOG.error("Error received retrieving Employee {}", id);
         }
         return ResponseEntity.badRequest().body(new Employee());
     }
@@ -81,7 +89,10 @@ public class EmployeeController implements IEmployeeController {
     @Override
     public ResponseEntity<List<String>> getTopTenHighestEarningEmployeeNames() {
         List<Employee> employees = queryEmployees();
-        if(!employees.isEmpty()){
+        if(employees != null){
+            if(employees.isEmpty()){
+                return ResponseEntity.badRequest().body(new ArrayList<>());
+            }
             employees.sort((o1, o2) -> Integer.parseInt(o2.getSalary()) - Integer.parseInt(o1.getSalary()));
             List<String> highestEarningEmployeeNames = new ArrayList<>();
             for(Employee employee : employees){
@@ -92,7 +103,7 @@ public class EmployeeController implements IEmployeeController {
             }
             return ResponseEntity.ok(highestEarningEmployeeNames);
         }
-        return ResponseEntity.badRequest().body(null);
+        return ResponseEntity.unprocessableEntity().body(null);
     }
 
     @Override
@@ -110,12 +121,17 @@ public class EmployeeController implements IEmployeeController {
         object.addProperty(NAME, name);
         object.addProperty(AGE, age);
         object.addProperty(SALARY, salary);
-        String response = client.create(gson.toJson(object), EMPLOYEE);
-        if(!response.isEmpty()){
-            DummyResponse<Employee> dummyResponse = gson.fromJson(response, new TypeToken<DummyResponse<Employee>>(){}.getType());
-            return ResponseEntity.ok(dummyResponse.getData());
+        String response = client.create(object.toString());
+        if(response != null){
+            try{
+                DummyResponse<Map<String, Object>> dummyResponse = gson.fromJson(response, new TypeToken<DummyResponse<Map<String, Object>>>(){}.getType());
+                Employee employee = extractEmployee(dummyResponse.getData());
+                return ResponseEntity.ok(employee);
+            } catch (Exception e){
+                LOG.error("Failed to create employee {}: {}", name, e.getLocalizedMessage());
+            }
         }
-        return ResponseEntity.badRequest().body(null);
+        return ResponseEntity.unprocessableEntity().body(null);
     }
 
     @Override
@@ -124,23 +140,46 @@ public class EmployeeController implements IEmployeeController {
             return ResponseEntity.badRequest().body(null);
         }
         String response = client.delete(id);
-        if(!response.isEmpty()){
+        if(response != null){
             return ResponseEntity.ok(response);
         }
-        return null;
+        return ResponseEntity.unprocessableEntity().body(null);
     }
 
 
+    private Employee extractEmployee(Map<String, Object> data) {
+        Employee employee = new Employee();
+        if(data.containsKey("name")){
+            employee.setName(String.valueOf(data.get("name")));
+        }
+        if(data.containsKey("salary")){
+            employee.setSalary(String.valueOf(data.get("salary")));
+        }
+        if(data.containsKey("age")){
+            employee.setAge(String.valueOf(data.get("age")));
+        }
+        if(data.containsKey("id")){
+            Double id = Double.parseDouble(String.valueOf(data.get("id")));
+            employee.setId(String.valueOf(id.intValue()));
+        }
+        return employee;
+    }
+
     private List<Employee> queryEmployees(){
+        List<Employee> results = null;
         String response = client.getAll(EMPLOYEE);
-        if(!response.isEmpty()){
-            DummyResponse<List<Employee>> dummyResponse = gson.fromJson(response, new TypeToken<DummyResponse<List<Employee>>>(){}.getType());
-            if(dummyResponse.getData() != null && !dummyResponse.getData().isEmpty()){
-                return dummyResponse.getData();
+        if(response != null){
+            try{
+                DummyResponse<List<Employee>> dummyResponse = gson.fromJson(response, new TypeToken<DummyResponse<List<Employee>>>(){}.getType());
+                if(dummyResponse.getData() != null && !dummyResponse.getData().isEmpty()){
+                    results = dummyResponse.getData();
+                }
+            } catch (Exception e){
+                LOG.error("Failed to query employees: {}", e.getLocalizedMessage());
             }
         } else {
-            LOG.error("Failed to query employees");
+            LOG.error("Employees query unsuccessful.");
         }
-        return new ArrayList<>();
+        return results;
     }
 }

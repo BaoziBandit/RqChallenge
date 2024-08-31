@@ -14,21 +14,18 @@ public class DummyRestClient {
     private final Logger LOG = LoggerFactory.getLogger(EmployeeController.class);
     private final HttpClient client = HttpClient.newHttpClient();
 
-    private final String BASE_URL = "https://dummy.restapiexample.com/api/v1/";
+    private final String BASE_URL = "https://dummy.restapiexample.com/api/v1";
 
     public String getAll(String objectName){
         try{
             HttpRequest request = HttpRequest.newBuilder().GET()
                     .uri(URI.create(String.format("%s/%ss", BASE_URL, objectName))).build();
             HttpResponse<String> response =  client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).get();
-            if(response.statusCode() == 200){
-                return response.body();
-            }
-            return "";
+            return handleResponse(response);
         }catch (InterruptedException | ExecutionException e){
             LOG.error(e.getLocalizedMessage());
+            return null;
         }
-        return null;
     }
 
     public String getById(String objectName, String id){
@@ -36,29 +33,24 @@ public class DummyRestClient {
             HttpRequest request = HttpRequest.newBuilder().GET()
                     .uri(URI.create(String.format("%s/%s/%s", BASE_URL, objectName, id))).build();
             HttpResponse<String> response =  client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).get();
-            if(response.statusCode() == 200){
-                return response.body();
-            }
-            return "";
+            return handleResponse(response);
         }catch (InterruptedException | ExecutionException e){
             LOG.error(e.getLocalizedMessage());
+            return null;
         }
-        return null;
     }
 
-    public String create(String object, String objectType){
+    public String create(String object){
         try{
             HttpRequest request = HttpRequest.newBuilder().POST(HttpRequest.BodyPublishers.ofString(object))
-                    .uri(URI.create(String.format("%s/%s/create", BASE_URL, objectType))).build();
+                    .header("Content-Type", "application/json")
+                    .uri(URI.create(String.format("%s/create", BASE_URL))).build();
             HttpResponse<String> response = client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).get();
-            if(response.statusCode() == 200){
-                return response.body();
-            }
-            return "";
+            return handleResponse(response);
         }catch (InterruptedException | ExecutionException e){
             LOG.error(e.getLocalizedMessage());
+            return null;
         }
-        return null;
     }
 
     public String delete(String id){
@@ -66,13 +58,18 @@ public class DummyRestClient {
             HttpRequest request = HttpRequest.newBuilder().DELETE()
                     .uri(URI.create(String.format("%s/delete/%s", BASE_URL, id))).build();
             HttpResponse<String> response = client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).get();
-            if(response.statusCode() == 200){
-                return response.body();
-            }
-            return "";
+            return handleResponse(response);
         }catch (InterruptedException | ExecutionException e){
             LOG.error(e.getLocalizedMessage());
+            return null;
         }
-        return null;
+    }
+
+    private String handleResponse(HttpResponse<String> response){
+        if(response.statusCode() >= 200 && response.statusCode() < 300){
+            return response.body();
+        } else {
+            return null;
+        }
     }
 }
