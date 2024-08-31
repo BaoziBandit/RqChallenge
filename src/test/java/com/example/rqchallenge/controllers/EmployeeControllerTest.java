@@ -1,14 +1,15 @@
 package com.example.rqchallenge.controllers;
 
-import com.example.rqchallenge.models.DummyResponse;
+import com.example.rqchallenge.clients.DummyRestClient;
 import com.example.rqchallenge.models.Employee;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ResponseEntity;
 
@@ -19,17 +20,28 @@ import static org.mockito.Mockito.when;
 
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @SpringBootTest
 public class EmployeeControllerTest {
 
+    private final DummyRestClient drc = Mockito.mock(DummyRestClient.class);
+    private final EmployeeController ec = new EmployeeController(drc);
+
+    @BeforeEach
+    void setUp() {
+        String EMPLOYEE = "employee";
+        when(drc.getAll(EMPLOYEE)).thenReturn(mockListDataString());
+        when(drc.getById(EMPLOYEE, "14")).thenReturn(mockObjectDataString());
+    }
+
     @Test
     public void getAllEmployeesTest(){
-        EmployeeController ec = Mockito.mock(EmployeeController.class);
-
         try{
-            when(ec.getAllEmployees()).thenReturn(mockListResponse());
+
 
             ResponseEntity<List<Employee>> data = ec.getAllEmployees();
+            Assertions.assertThat(data).isNotNull();
+            Assertions.assertThat(data.getBody()).isNotNull();
             List<Employee> employees = data.getBody();
             Assertions.assertThat(employees).isNotNull();
             Assertions.assertThat(employees).isNotEmpty();
@@ -41,10 +53,6 @@ public class EmployeeControllerTest {
 
     @Test
     public void getEmployeeByIdTest(){
-        EmployeeController ec = Mockito.mock(EmployeeController.class);
-
-        when(ec.getEmployeeById("14")).thenReturn(mockEmployeeObject());
-
         ResponseEntity<Employee> data = ec.getEmployeeById("14");
         Assertions.assertThat(data).isNotNull();
         Assertions.assertThat(data.getBody()).isNotNull();
@@ -59,10 +67,6 @@ public class EmployeeControllerTest {
 
     @Test
     public void getEmployeeByNameSearchTest(){
-        EmployeeController ec = Mockito.mock(EmployeeController.class);
-
-        when(ec.getEmployeesByNameSearch("Haley")).thenReturn(mockNameFilteredList());
-
         ResponseEntity<List<Employee>> data = ec.getEmployeesByNameSearch("Haley");
         Assertions.assertThat(data).isNotNull();
         Assertions.assertThat(data.getBody()).isNotNull();
@@ -79,10 +83,6 @@ public class EmployeeControllerTest {
 
     @Test
     public void getHighestSalaryOfEmployees(){
-        EmployeeController ec = Mockito.mock(EmployeeController.class);
-
-        when(ec.getHighestSalaryOfEmployees()).thenReturn(ResponseEntity.ok(725000));
-
         ResponseEntity<Integer> data = ec.getHighestSalaryOfEmployees();
         Assertions.assertThat(data).isNotNull();
         Assertions.assertThat(data.getBody()).isNotNull();
@@ -91,10 +91,6 @@ public class EmployeeControllerTest {
 
     @Test
     public void getHighestEarningEmployeeNamesTest(){
-        EmployeeController ec = Mockito.mock(EmployeeController.class);
-
-        when(ec.getTopTenHighestEarningEmployeeNames()).thenReturn(ResponseEntity.ok(getHighestSalaryNames()));
-
         ResponseEntity<List<String>> data = ec.getTopTenHighestEarningEmployeeNames();
         Assertions.assertThat(data).isNotNull();
         Assertions.assertThat(data.getBody()).isNotNull();
@@ -102,54 +98,6 @@ public class EmployeeControllerTest {
         List<String> names = data.getBody();
         Assertions.assertThat(names.get(0)).isEqualTo("Paul Byrd");
         Assertions.assertThat(names.get(names.size() - 1)).isEqualTo("Tiger Nixon");
-    }
-
-
-    private List<String> getHighestSalaryNames(){
-        return List.of("Paul Byrd",
-                "Yuri Berry",
-                "Charde Marshall",
-                "Cedric Kelly",
-                "Tatyana Fitzpatrick",
-                "Brielle Williamson",
-                "Jenette Caldwell",
-                "Quinn Flynn",
-                "Rhona Davidson",
-                "Tiger Nixon");
-    }
-
-    private ResponseEntity<Employee> mockEmployeeObject(){
-        Employee employee = mockObjectResponse().getData();
-        return ResponseEntity.ok(employee);
-    }
-
-
-    private DummyResponse<Employee> mockObjectResponse(){
-        return new Gson().fromJson(mockObjectDataString(), new TypeToken<DummyResponse<Employee>>(){}.getType());
-    }
-
-    private ResponseEntity<List<Employee>> mockNameFilteredList(){
-        String list = "[\n" +
-                "    {\n" +
-                "        \"id\": \"14\",\n" +
-                "        \"employee_name\": \"Haley Kennedy\",\n" +
-                "        \"employee_salary\": \"313500\",\n" +
-                "        \"employee_age\": \"43\",\n" +
-                "        \"profile_image\": \"\"\n" +
-                "    }\n" +
-                "]";
-        List<Employee> employees = new Gson().fromJson(list, new TypeToken<List<Employee>>(){}.getType());
-        return ResponseEntity.ok(employees);
-    }
-
-
-    private ResponseEntity<List<Employee>> mockListResponse(){
-        List<Employee> employees = mockEmployeesList().getData();
-        return ResponseEntity.ok(employees);
-    }
-
-    private DummyResponse<List<Employee>> mockEmployeesList(){
-        return new Gson().fromJson(mockListDataString(), new TypeToken<DummyResponse<List<Employee>>>(){}.getType());
     }
 
     private String mockObjectDataString(){

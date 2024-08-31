@@ -19,8 +19,15 @@ import java.util.*;
 @RequestMapping("/employee")
 public class EmployeeController implements IEmployeeController {
     private final Logger LOG = LoggerFactory.getLogger(EmployeeController.class);
-    private final DummyRestClient client = new DummyRestClient();
+    private final DummyRestClient client;
     private final Gson gson = new Gson();
+
+    public EmployeeController(){
+        this(null);
+    }
+    public EmployeeController(DummyRestClient client){
+        this.client = client != null ? client : new DummyRestClient();
+    }
 
     private final String EMPLOYEE = "employee";
 
@@ -28,6 +35,7 @@ public class EmployeeController implements IEmployeeController {
     public ResponseEntity<List<Employee>> getAllEmployees() throws IOException {
         List<Employee> employees = queryEmployees();
         if(employees != null) {
+            LOG.info("Received {} employees ", employees.size());
             return ResponseEntity.ok(employees);
         }
         return ResponseEntity.unprocessableEntity().build();
@@ -46,6 +54,7 @@ public class EmployeeController implements IEmployeeController {
             }
         }
         if(!employeesByName.isEmpty()){
+            LOG.info("Received {} employees with name {}", employees.size(), searchString);
             return ResponseEntity.ok(employeesByName);
         }
         return ResponseEntity.badRequest().body(employeesByName);
@@ -58,6 +67,7 @@ public class EmployeeController implements IEmployeeController {
             try{
                 DummyResponse<Employee> dummyResponse = gson.fromJson(response, new TypeToken<DummyResponse<Employee>>(){}.getType());
                 if(dummyResponse.getData() != null){
+                    LOG.info("Found employee with id {}", id);
                     return ResponseEntity.ok(dummyResponse.getData());
                 }
             } catch (Exception e){
@@ -66,21 +76,24 @@ public class EmployeeController implements IEmployeeController {
         } else {
             LOG.error("Error received retrieving Employee {}", id);
         }
-        return ResponseEntity.badRequest().body(new Employee());
+        return ResponseEntity.badRequest().body(null);
     }
 
     @Override
     public ResponseEntity<Integer> getHighestSalaryOfEmployees() {
         List<Employee> employees = queryEmployees();
+        if(employees == null){
+            return ResponseEntity.unprocessableEntity().body(null);
+        }
         if(!employees.isEmpty()){
             int highestSalary = 0;
             for(Employee employee : employees){
-                LOG.info("Employee Salary: {}", employee.getSalary());
                 int salary = Integer.parseInt(employee.getSalary());
                 if(salary > highestSalary){
                     highestSalary = salary;
                 }
             }
+            LOG.info("Highest employee salary is {}", highestSalary);
             return ResponseEntity.ok(highestSalary);
         }
         return ResponseEntity.badRequest().body(null);
@@ -101,6 +114,7 @@ public class EmployeeController implements IEmployeeController {
                     break;
                 }
             }
+            LOG.info("Found top {} highest salary employees", highestEarningEmployeeNames.size());
             return ResponseEntity.ok(highestEarningEmployeeNames);
         }
         return ResponseEntity.unprocessableEntity().body(null);
@@ -126,6 +140,7 @@ public class EmployeeController implements IEmployeeController {
             try{
                 DummyResponse<Map<String, Object>> dummyResponse = gson.fromJson(response, new TypeToken<DummyResponse<Map<String, Object>>>(){}.getType());
                 Employee employee = extractEmployee(dummyResponse.getData());
+                LOG.info("Created employee with id {} successfully", employee.getId());
                 return ResponseEntity.ok(employee);
             } catch (Exception e){
                 LOG.error("Failed to create employee {}: {}", name, e.getLocalizedMessage());
@@ -141,6 +156,7 @@ public class EmployeeController implements IEmployeeController {
         }
         String response = client.delete(id);
         if(response != null){
+            LOG.info("Deleted employee with id {}", id);
             return ResponseEntity.ok(response);
         }
         return ResponseEntity.unprocessableEntity().body(null);
@@ -159,8 +175,8 @@ public class EmployeeController implements IEmployeeController {
             employee.setAge(String.valueOf(data.get("age")));
         }
         if(data.containsKey("id")){
-            Double id = Double.parseDouble(String.valueOf(data.get("id")));
-            employee.setId(String.valueOf(id.intValue()));
+            int id = (int)Double.parseDouble(String.valueOf(data.get("id")));
+            employee.setId(String.valueOf(id));
         }
         return employee;
     }

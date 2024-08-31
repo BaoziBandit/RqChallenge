@@ -21,7 +21,8 @@ public class DummyRestClient {
             HttpRequest request = HttpRequest.newBuilder().GET()
                     .uri(URI.create(String.format("%s/%ss", BASE_URL, objectName))).build();
             HttpResponse<String> response =  client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).get();
-            return handleResponse(response);
+            LOG.info("getAll response code: {}", response.statusCode());
+            return handleResponse(response, "query all");
         }catch (InterruptedException | ExecutionException e){
             LOG.error(e.getLocalizedMessage());
             return null;
@@ -33,7 +34,8 @@ public class DummyRestClient {
             HttpRequest request = HttpRequest.newBuilder().GET()
                     .uri(URI.create(String.format("%s/%s/%s", BASE_URL, objectName, id))).build();
             HttpResponse<String> response =  client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).get();
-            return handleResponse(response);
+            LOG.info("getById response code: {}", response.statusCode());
+            return handleResponse(response, "query by id");
         }catch (InterruptedException | ExecutionException e){
             LOG.error(e.getLocalizedMessage());
             return null;
@@ -46,7 +48,7 @@ public class DummyRestClient {
                     .header("Content-Type", "application/json")
                     .uri(URI.create(String.format("%s/create", BASE_URL))).build();
             HttpResponse<String> response = client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).get();
-            return handleResponse(response);
+            return handleResponse(response, "create");
         }catch (InterruptedException | ExecutionException e){
             LOG.error(e.getLocalizedMessage());
             return null;
@@ -58,17 +60,18 @@ public class DummyRestClient {
             HttpRequest request = HttpRequest.newBuilder().DELETE()
                     .uri(URI.create(String.format("%s/delete/%s", BASE_URL, id))).build();
             HttpResponse<String> response = client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).get();
-            return handleResponse(response);
+            return handleResponse(response, "delete");
         }catch (InterruptedException | ExecutionException e){
             LOG.error(e.getLocalizedMessage());
             return null;
         }
     }
 
-    private String handleResponse(HttpResponse<String> response){
+    private String handleResponse(HttpResponse<String> response, String action){
         if(response.statusCode() >= 200 && response.statusCode() < 300){
             return response.body();
         } else {
+            LOG.error("Failed to {} | {}: {}", action, response.statusCode(), response.body());
             return null;
         }
     }
