@@ -1,5 +1,6 @@
-package com.example.rqchallenge.employees;
+package com.example.rqchallenge.controllers;
 
+import com.example.rqchallenge.models.Employee;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
